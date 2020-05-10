@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 import json 
 import collections
+import copy 
+import gc 
 
 csvLine = []
 outputDict = collections.OrderedDict()
@@ -11,53 +13,58 @@ with open('Bk.json') as json_file:
     data = json.load(json_file) 
 
 def JSON2CSV_TRACE(formatedString):
-    #print(formatedString)
-    pass
+    print(formatedString)
+    #pass
 
 #JSON2CSV_TRACE(data)
 #JSON2CSV_TRACE(type(data))
 
-def handleList(inputList):
+def handleList(inputList, outputDict):
     for item in inputList:
+        newDict = outputDict
+        if (len(inputList) > 1 and bool(outputDict)):
+            # Make copy of previous list and pass into next call
+            print("Making copy")
+            newDict = copy.deepcopy(outputDict)
         if type(item) is dict:
-            JSON2CSV_TRACE("handleList dict type")
-            handlDictType(item)
+            handlDictType(item, newDict)
         elif type(item) is list:
-            JSON2CSV_TRACE("handleList list type")
             print("This should never come")
-            handleList(item)
         elif type(item) is str:
-            JSON2CSV_TRACE("handleList printing value")
-            JSON2CSV_TRACE(item)
             print("This should never come")
         else:
-            JSON2CSV_TRACE("handleList printing value")
             print("This should never come")
-            JSON2CSV_TRACE(item)
 
 
-def handlDictType(inputDict):
+def handlDictType(inputDict, outputDict):
+    recurring = False
     for key in inputDict:
         if type(inputDict[key]) is dict:
-            JSON2CSV_TRACE("handlDictType dict type")
-            handlDictType(inputDict[key])
+            JSON2CSV_TRACE("handlDictType dict type" + "key=" + key)
+            recurring = True
+            handlDictType(inputDict[key], outputDict)
         elif type(inputDict[key]) is list:
-            JSON2CSV_TRACE("handlDictType list type")
-            handleList(inputDict[key])
+            JSON2CSV_TRACE("handlDictType list type" + "key=" + key)
+            recurring = True
+            handleList(inputDict[key], outputDict)
         elif type(inputDict[key]) is str:
-            JSON2CSV_TRACE("handlDictType printing value")
+            JSON2CSV_TRACE("handlDictType appending value")
             JSON2CSV_TRACE(inputDict[key])
             outputDict[key] = "=\"" + inputDict[key] + "\""
+            recurring = False
         else:
-            JSON2CSV_TRACE("handlDictType printing value")
+            JSON2CSV_TRACE("handlDictType appending value")
             JSON2CSV_TRACE(inputDict[key])
             outputDict[key] = "=\"" + str(inputDict[key]) + "\""
+            recurring = False
+
+    #print(outputDict)
+    if not recurring:
+        print(','.join(outputDict.values()))
 
 
 def toCsv(inputJson):
-    handlDictType(inputJson)
-    print(outputDict)
-    print("CSV Line: " + ','.join(outputDict.values()))
+    handlDictType(inputJson, outputDict)
 
 toCsv(data)
 
