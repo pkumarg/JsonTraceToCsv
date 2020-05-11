@@ -2,19 +2,19 @@
 import json 
 import collections
 import copy 
-import gc 
+import sys 
+import argparse
 
-csvLine = []
+lineCounter = 0
 outputDict = collections.OrderedDict()
-
-# Opening JSON file and loading the data 
-# into the variable data 
-with open('Bk.json') as json_file: 
-    data = json.load(json_file) 
 
 def JSON2CSV_TRACE(formatedString):
     #print(formatedString)
     pass
+
+def unknownError(lastItem):
+    print("Unkown error occurred at line=" + str(lineCounter) + " LastItem:\n" + str(lastItem), file=sys.stderr)
+    exit()
 
 #JSON2CSV_TRACE(data)
 #JSON2CSV_TRACE(type(data))
@@ -28,12 +28,10 @@ def handleList(inputList, outputDict):
             newDict = copy.deepcopy(outputDict)
         if type(item) is dict:
             handlDictType(item, newDict)
-        elif type(item) is list:
-            print("This should never come")
-        elif type(item) is str:
-            print("This should never come")
+        if type(item) is list:
         else:
-            print("This should never come")
+            # Not expected a list, str, number type item
+            unknownError(item)
 
 def addToDict(key, value, dict):
     appendIndex = 1
@@ -43,7 +41,7 @@ def addToDict(key, value, dict):
             if not key in dict.keys():
                 break
             appendIndex += 1
-    dict[key] = value
+    dict[key] = "=\"" + value + "\""
 
 
 def handlDictType(inputDict, outputDict):
@@ -77,5 +75,36 @@ def handlDictType(inputDict, outputDict):
 def toCsv(inputJson):
     handlDictType(inputJson, outputDict)
 
+def parsingStart(jsonDataFile):
+    global lineCounter
+    # Open JSON data file
+    jsonDataFile_fp = open(jsonDataFile, "r")
+
+    while True:
+        jsonObj = jsonDataFile_fp.readline()
+        lineCounter += 1
+        if jsonObj:
+            toCsv(json.loads(jsonObj))
+            outputDict.clear()
+        else:
+            break
+
 # Summon the magic
-toCsv(data)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+            description="JSON Object Parser",
+            epilog="",
+            formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+            '-j',
+            '--jsonDataFile',
+            metavar = '<JSON data file>',
+            help = 'JSON data file input is mandotory !')
+
+    args = parser.parse_args()
+
+    if not args.jsonDataFile:
+        parser.print_help()
+    else:
+        parsingStart(args.jsonDataFile)
+
