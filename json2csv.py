@@ -28,7 +28,6 @@ def handleList(inputList, outputDict):
             newDict = copy.deepcopy(outputDict)
         if type(item) is dict:
             handlDictType(item, newDict)
-        if type(item) is list:
         else:
             # Not expected a list, str, number type item
             unknownError(item)
@@ -53,9 +52,15 @@ def handlDictType(inputDict, outputDict):
             recurring = True
             handlDictType(inputDict[key], outputDict)
         elif type(inputDict[key]) is list:
-            JSON2CSV_TRACE("handlDictType list type" + " key=" + key + " elements=" + str(len(inputDict[key])))
-            recurring = True
-            handleList(inputDict[key], outputDict)
+            if ((type(inputDict[key][0]) is int) or (type(inputDict[key][0]) is str)):
+                JSON2CSV_TRACE("handlDictType list in list type")
+                recurring = False
+                valueArray = ' '.join([str(strOrInt) for strOrInt in inputDict[key]])
+                addToDict(key, valueArray, outputDict)
+            else:
+                JSON2CSV_TRACE("handlDictType list type" + " key=" + key + " elements=" + str(len(inputDict[key])))
+                recurring = True
+                handleList(inputDict[key], outputDict)
         elif type(inputDict[key]) is str:
             JSON2CSV_TRACE("handlDictType appending value")
             JSON2CSV_TRACE(inputDict[key])
