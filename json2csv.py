@@ -6,20 +6,28 @@ import sys
 import argparse
 
 lineCounter = 0
+
+inNestedDict = 0
+printList = 0
+
 outputDict = collections.OrderedDict()
 
 def JSON2CSV_TRACE(formatedString):
     #print(formatedString)
     pass
 
-def unknownError(lastItem):
-    print("Unkown error occurred at line=" + str(lineCounter) + " LastItem:\n" + str(lastItem), file=sys.stderr)
+def unknownError(lastItem, error):
+    print("Unkown error occurred at line=" + str(lineCounter) +
+            "\nErrorDesc: " + error + "\nLastItem: " + str(lastItem),
+            file=sys.stderr)
     exit()
 
 #JSON2CSV_TRACE(data)
 #JSON2CSV_TRACE(type(data))
 
 def handleList(inputList, outputDict):
+    global printList
+    printList += 1
     for item in inputList:
         newDict = outputDict
         if (len(inputList) > 1 and bool(outputDict)):
@@ -30,7 +38,8 @@ def handleList(inputList, outputDict):
             handlDictType(item, newDict)
         else:
             # Not expected a list, str, number type item
-            unknownError(item)
+            unknownError(item, "Didn't expect list,int,srt type in handleList()")
+    printList -= 1
 
 def addToDict(key, value, dict):
     appendIndex = 1
@@ -46,6 +55,9 @@ def addToDict(key, value, dict):
 def handlDictType(inputDict, outputDict):
     JSON2CSV_TRACE(outputDict)
     recurring = False
+    global inNestedDict
+    global printList
+    inNestedDict += 1
     for key in inputDict:
         if type(inputDict[key]) is dict:
             JSON2CSV_TRACE("handlDictType dict type" + " key=" + key)
@@ -72,8 +84,10 @@ def handlDictType(inputDict, outputDict):
             recurring = False
             addToDict(key, str(inputDict[key]), outputDict)
 
+        inNestedDict -= 1
+
     JSON2CSV_TRACE(outputDict)
-    if not recurring:
+    if not inNestedDict or printList:
         print(','.join(outputDict.values()))
 
 
