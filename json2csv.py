@@ -6,8 +6,7 @@ import sys
 import argparse
 
 lineCounter = 0
-
-printList = 0
+lastItemIsList = 0
 
 outputDict = collections.OrderedDict()
 
@@ -17,23 +16,19 @@ def unknownError(lastItem, error):
             file=sys.stderr)
     exit()
 
-def handleList(inputList, outputDict, printListCount):
-    global printList
-
+def handleListType(inputList, outputDict):
     for item in inputList:
-        if(printListCount > 1):
-            printList = 1
         newDict = outputDict
         if (len(inputList) > 1 and bool(outputDict)):
             # Make copy of previous list and pass into next call
             newDict = copy.deepcopy(outputDict)
         if type(item) is dict:
-            handlDictType(item, newDict, printListCount)
+            handleDictType(item, newDict)
+            # Let's print after handling list element
+            print(','.join(newDict.values()))
         else:
             # Not expected a list, str, number type item
-            unknownError(item, "Didn't expect list,int,srt type in handleList()")
-
-    printListCount /= len(inputList)
+            unknownError(item, "Didn't expect list,int,srt type in handleListType()")
 
 def addToDict(key, value, dict):
     appendIndex = 1
@@ -46,30 +41,29 @@ def addToDict(key, value, dict):
     dict[key] = "=\"" + value + "\""
 
 
-def handlDictType(inputDict, outputDict, printListCount):
-    global printList
+def handleDictType(inputDict, outputDict):
+    global lastItemIsList
     for key in inputDict:
         if type(inputDict[key]) is dict:
-            handlDictType(inputDict[key], outputDict, printListCount)
+            handleDictType(inputDict[key], outputDict)
+            lastItemIsList = 0
         elif type(inputDict[key]) is list:
             if ((type(inputDict[key][0]) is int) or (type(inputDict[key][0]) is str)):
                 valueArray = ' '.join([str(strOrInt) for strOrInt in inputDict[key]])
                 addToDict(key, valueArray, outputDict)
             else:
-                handleList(inputDict[key], outputDict, printListCount*len(inputDict[key]))
+                handleListType(inputDict[key], outputDict)
+                lastItemIsList = 1
         elif type(inputDict[key]) is str:
             addToDict(key, inputDict[key], outputDict)
         else:
             addToDict(key, str(inputDict[key]), outputDict)
 
-    if printList:
-        print(','.join(outputDict.values()))
-        printList = 0
-
-
 def toCsv(inputJson):
-    handlDictType(inputJson, outputDict, 1)
-    print(','.join(outputDict.values()))
+    global lastItemIsList
+    handleDictType(inputJson, outputDict)
+    if not lastItemIsList:
+        print(','.join(outputDict.values()))
 
 def parsingStart(jsonDataFile):
     global lineCounter
