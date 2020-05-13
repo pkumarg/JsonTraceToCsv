@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/afs/sero.gic.ericsson.se/app/vbuild/RHEL7-x86_64/python/3.8.0/bin/python3
 import json 
 import collections
 import copy 
@@ -7,7 +7,6 @@ import argparse
 
 lineCounter = 0
 
-inNestedDict = 0
 printList = 0
 
 outputDict = collections.OrderedDict()
@@ -25,21 +24,24 @@ def unknownError(lastItem, error):
 #JSON2CSV_TRACE(data)
 #JSON2CSV_TRACE(type(data))
 
-def handleList(inputList, outputDict):
+def handleList(inputList, outputDict, printListCount):
     global printList
-    printList += 1
+
     for item in inputList:
+        if(printListCount > 1):
+            printList = 1
         newDict = outputDict
         if (len(inputList) > 1 and bool(outputDict)):
             # Make copy of previous list and pass into next call
             JSON2CSV_TRACE("Making copy")
             newDict = copy.deepcopy(outputDict)
         if type(item) is dict:
-            handlDictType(item, newDict)
+            handlDictType(item, newDict, printListCount)
         else:
             # Not expected a list, str, number type item
             unknownError(item, "Didn't expect list,int,srt type in handleList()")
-    printList -= 1
+
+    printListCount /= len(inputList)
 
 def addToDict(key, value, dict):
     appendIndex = 1
@@ -52,47 +54,39 @@ def addToDict(key, value, dict):
     dict[key] = "=\"" + value + "\""
 
 
-def handlDictType(inputDict, outputDict):
+def handlDictType(inputDict, outputDict, printListCount):
     JSON2CSV_TRACE(outputDict)
-    recurring = False
-    global inNestedDict
     global printList
-    inNestedDict += 1
     for key in inputDict:
         if type(inputDict[key]) is dict:
             JSON2CSV_TRACE("handlDictType dict type" + " key=" + key)
-            recurring = True
-            handlDictType(inputDict[key], outputDict)
+            handlDictType(inputDict[key], outputDict, printListCount)
         elif type(inputDict[key]) is list:
             if ((type(inputDict[key][0]) is int) or (type(inputDict[key][0]) is str)):
                 JSON2CSV_TRACE("handlDictType list in list type")
-                recurring = False
                 valueArray = ' '.join([str(strOrInt) for strOrInt in inputDict[key]])
                 addToDict(key, valueArray, outputDict)
             else:
                 JSON2CSV_TRACE("handlDictType list type" + " key=" + key + " elements=" + str(len(inputDict[key])))
-                recurring = True
-                handleList(inputDict[key], outputDict)
+                handleList(inputDict[key], outputDict, printListCount*len(inputDict[key]))
         elif type(inputDict[key]) is str:
             JSON2CSV_TRACE("handlDictType appending value")
             JSON2CSV_TRACE(inputDict[key])
-            recurring = False
             addToDict(key, inputDict[key], outputDict)
         else:
             JSON2CSV_TRACE("handlDictType appending value")
             JSON2CSV_TRACE(inputDict[key])
-            recurring = False
             addToDict(key, str(inputDict[key]), outputDict)
 
-        inNestedDict -= 1
-
     JSON2CSV_TRACE(outputDict)
-    if not inNestedDict or printList:
+    if printList:
         print(','.join(outputDict.values()))
+        printList = 0
 
 
 def toCsv(inputJson):
-    handlDictType(inputJson, outputDict)
+    handlDictType(inputJson, outputDict, 1)
+    print(','.join(outputDict.values()))
 
 def parsingStart(jsonDataFile):
     global lineCounter
