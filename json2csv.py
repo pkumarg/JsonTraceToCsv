@@ -1,4 +1,4 @@
-#!/afs/sero.gic.ericsson.se/app/vbuild/RHEL7-x86_64/python/3.8.0/bin/python3
+#!/usr/bin/python3
 import json 
 import collections
 import copy 
