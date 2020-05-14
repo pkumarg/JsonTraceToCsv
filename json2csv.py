@@ -1,4 +1,4 @@
-#!/afs/sero.gic.ericsson.se/app/vbuild/RHEL7-x86_64/python/3.8.0/bin/python3
+#!/usr/bin/python3
 import json 
 import collections
 import copy 
@@ -13,6 +13,7 @@ valueStartFormat = '="'
 valueEndFormat = '"'
 
 outputDict = collections.OrderedDict()
+outputColumns = collections.OrderedDict()
 
 def handleError(currentItem, error, exit):
     print("***Error*** Line=" + str(lineCounter) +
@@ -71,6 +72,7 @@ def handleDictType(inputDict, outputDict):
 
 def toCsv(inputJson):
     global lastItemIsList
+
     handleDictType(inputJson, outputDict)
     if not lastItemIsList:
         printOutput(outputDict.values())
@@ -105,6 +107,12 @@ def startParsing(args):
     #And be a gentleman, not sure if python does it automatically
     jsonDataFile_fp.close()
 
+def updateOutputColumns(args):
+    columns = args.csvColumns.split(',')
+
+    for col in columns:
+        outputColumns[col]= '0'
+
 def updateGlobals(args):
     global separator
     global valueStartFormat
@@ -119,6 +127,8 @@ def updateGlobals(args):
     if args.plain_csv:
         valueStartFormat = ''
         valueEndFormat = ''
+
+    updateOutputColumns(args)
 
 # Summon the magic
 if __name__ == '__main__':
