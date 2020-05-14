@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/afs/sero.gic.ericsson.se/app/vbuild/RHEL7-x86_64/python/3.8.0/bin/python3
 import json 
 import collections
 import copy 
@@ -8,6 +8,9 @@ import argparse
 lineCounter = 0
 lastItemIsList = 0
 outputFile_fp = sys.stdout
+separator = ','
+valueStartFormat = '="'
+valueEndFormat = '"'
 
 outputDict = collections.OrderedDict()
 
@@ -18,9 +21,10 @@ def handleError(currentItem, error, exit):
     if exit:
         exit()
 
-def printOutput(outTrace):
+def printOutput(csvColumns):
     global outputFile_fp
-    print(outTrace, file=outputFile_fp)
+    global separator
+    print(separator.join(csvColumns), file=outputFile_fp)
 
 def handleListType(inputList, outputDict):
     for item in inputList:
@@ -31,7 +35,7 @@ def handleListType(inputList, outputDict):
         if type(item) is dict:
             handleDictType(item, newDict)
             # Let's print after handling list element
-            printOutput(','.join(newDict.values()))
+            printOutput(newDict.values())
         else:
             # Not expected a list, str, number type item
             handleError(item, "Didn't expect list,int,srt type in handleListType()", True)
@@ -44,7 +48,7 @@ def addToDict(key, value, dict):
             if not key in dict.keys():
                 break
             appendIndex += 1
-    dict[key] = "=\"" + value + "\""
+    dict[key] = valueStartFormat + value + valueEndFormat
 
 
 def handleDictType(inputDict, outputDict):
@@ -69,7 +73,7 @@ def toCsv(inputJson):
     global lastItemIsList
     handleDictType(inputJson, outputDict)
     if not lastItemIsList:
-        printOutput(','.join(outputDict.values()))
+        printOutput(outputDict.values())
 
 def startParsing(args):
     global lineCounter
@@ -79,7 +83,6 @@ def startParsing(args):
 
     # if we have to write output file
     if args.outputFile:
-        print(args.outputFile)
         outputFile_fp = open(args.outputFile, "w")
 
     while True:
@@ -102,6 +105,21 @@ def startParsing(args):
     #And be a gentleman, not sure if python does it automatically
     jsonDataFile_fp.close()
 
+def updateGlobals(args):
+    global separator
+    global valueStartFormat
+    global valueEndFormat
+
+    # Don't want to get it ugly so accepting only 1 char separator
+    if args.separator and (len(args.separator) == 1):
+        separator = args.separator
+    else:
+        print("Expected separator length is 1, using , as separator")
+
+    if args.plain_csv:
+        valueStartFormat = ''
+        valueEndFormat = ''
+
 # Summon the magic
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -114,17 +132,33 @@ if __name__ == '__main__':
             help=''
             )
     parser.add_argument(
-            '-f',
+            '-o',
             '--outputFile',
             metavar = '<outputFile.csv>',
-            help = '')
+            help = ''
+            )
     parser.add_argument(
             '-c',
             '--csvColumns',
             metavar = '<"col1,col2,col3 ...">',
-            help = 'Column name should exactly match, in JSON objects. Columns printed in output CSV file only make sense if input JSON file have all lines of same JSON object type')
+            help = 'Column name should exactly match, in JSON objects. \
+                    Columns printed in output CSV file only make sense \
+                    if input JSON file have all lines of same JSON object type'
+            )
+    parser.add_argument(
+            '--separator',
+            metavar = '<Custom CSV separator, default is comma>',
+            help = ''
+            )
+    parser.add_argument(
+            '--plain-csv',
+            action = 'store_true',
+            help = 'Makes standard CSV, useful if not using Excel',
+            )
 
     args = parser.parse_args()
+
+    updateGlobals(args)
 
     if not args.inputJsonFile:
         parser.print_help()
