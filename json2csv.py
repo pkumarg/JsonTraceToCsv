@@ -11,9 +11,12 @@ outputFile_fp = sys.stdout
 separator = ','
 valueStartFormat = '="'
 valueEndFormat = '"'
+columnIdx = 0
+addColumn = True
+dumpColumn = False
 
 outputDict = collections.OrderedDict()
-outputColumns = collections.OrderedDict()
+outputColumns = []
 
 def handleError(currentItem, error, exit):
     print("***Error*** Line=" + str(lineCounter) +
@@ -22,10 +25,30 @@ def handleError(currentItem, error, exit):
     if exit:
         exit()
 
-def printOutput(csvColumns):
+def printOutput(csvRow):
     global outputFile_fp
     global separator
-    print(separator.join(csvColumns), file=outputFile_fp)
+    print(separator.join(csvRow), file=outputFile_fp)
+
+def printCsvHeader(outputFile):
+    global outputColumns
+    global valueStartFormat
+    global valueEndFormat
+    global dumpColumn
+    columnList = []
+
+    colIdx = 0
+
+    for colDict in outputColumns:
+        columnList.append(valueStartFormat + list(colDict.keys())[0] + valueEndFormat)
+
+    if outputFile:
+        with open(outputFile, 'r+') as outFile_fp:
+            content = outFile_fp.read()
+            outFile_fp.seek(0, 0)
+            outFile_fp.write(separator.join(columnList).rstrip('\r\n') + '\n' + content)
+    elif dumpColumn:
+        print(separator.join(columnList), file=sys.stderr)
 
 def handleListType(inputList, outputDict):
     for item in inputList:
@@ -39,22 +62,43 @@ def handleListType(inputList, outputDict):
             printOutput(newDict.values())
         else:
             # Not expected a list, str, number type item
-            handleError(item, "Didn't expect list,int,srt type in handleListType()", True)
+            handleError(item, "Didn't expect list,int,str type in handleListType()", True)
 
-def addToDict(key, value, dict):
+def addToDict(key, value, outputDict):
+    global addColumn
+    global columnIdx
+
+    # Add this column (Display all column case)
+    #print("addToDict(): ColIdx=" + str(columnIdx) + " Len=" + str(len(outputColumns)))
+    if addColumn:
+        outputColumns.append({key:0})
+    # Didn't match
+    elif not (list(outputColumns[columnIdx].keys())[0] == key):
+        return
+
+    columnIdx += 1
+
     appendIndex = 1
-    if key in dict.keys():
+    if key in outputDict.keys():
         while True:
             key = key + "_" + str(appendIndex)
-            if not key in dict.keys():
+            if not key in outputDict.keys():
                 break
             appendIndex += 1
-    dict[key] = valueStartFormat + value + valueEndFormat
+    outputDict[key] = valueStartFormat + value + valueEndFormat
 
 
 def handleDictType(inputDict, outputDict):
     global lastItemIsList
+    global columnIdx
+    global addColumn
+    global outputColumns
+
+    #print("handleDictType(): ColIdx=" + str(columnIdx) + " Len=" + str(len(outputColumns)))
     for key in inputDict:
+        if not addColumn and columnIdx >= len(outputColumns):
+            return
+
         if type(inputDict[key]) is dict:
             handleDictType(inputDict[key], outputDict)
             lastItemIsList = 0
@@ -65,8 +109,6 @@ def handleDictType(inputDict, outputDict):
             else:
                 handleListType(inputDict[key], outputDict)
                 lastItemIsList = 1
-        elif type(inputDict[key]) is str:
-            addToDict(key, inputDict[key], outputDict)
         else:
             addToDict(key, str(inputDict[key]), outputDict)
 
@@ -80,6 +122,8 @@ def toCsv(inputJson):
 def startParsing(args):
     global lineCounter
     global outputFile_fp
+    global columnIdx
+
     # Open JSON data file
     jsonDataFile_fp = open(args.inputJsonFile, "r")
 
@@ -96,6 +140,7 @@ def startParsing(args):
             except json.JSONDecodeError:
                 handleError(jsonObjLine, "json.JSONDecodeError", False)
             outputDict.clear()
+            columnIdx = 0
         else:
             break
 
@@ -103,32 +148,56 @@ def startParsing(args):
     # we have something useful in this :P
     if args.outputFile:
         outputFile_fp.close()
+        printCsvHeader(args.outputFile)
+
+    if args.dump_columns:
+        printCsvHeader(None)
 
     #And be a gentleman, not sure if python does it automatically
     jsonDataFile_fp.close()
 
-def updateOutputColumns(args):
+def updateCsvColumns(args):
+    global outputColumns
+    global addColumn
+
+    # we have to use user provided column only
+    addColumn = False
+
+    columnPattern = '(?P<column>.*):(?P<depth>.*)$'
     columns = args.csvColumns.split(',')
 
     for col in columns:
-        outputColumns[col]= '0'
+        colDepth = col.split(':')
+        if len(colDepth) == 2:
+            try:
+                outputColumns.append({colDepth[0]:int(colDepth[1])})
+            except ValueError:
+                print("Depth in column=" + col +" is not a valid number")
+        else:
+            outputColumns.append({colDepth[0]:0})
 
 def updateGlobals(args):
     global separator
     global valueStartFormat
     global valueEndFormat
+    global dumpColumn
 
     # Don't want to get it ugly so accepting only 1 char separator
-    if args.separator and (len(args.separator) == 1):
-        separator = args.separator
-    else:
-        print("Expected separator length is 1, using , as separator")
+    if args.separator:
+        if len(args.separator) == 1:
+            separator = args.separator
+        else:
+            print("Expected separator length is 1, using , as separator")
 
     if args.plain_csv:
         valueStartFormat = ''
         valueEndFormat = ''
 
-    updateOutputColumns(args)
+    if args.csvColumns:
+        updateCsvColumns(args)
+
+    if args.dump_columns:
+        dumpColumn = True
 
 # Summon the magic
 if __name__ == '__main__':
@@ -164,6 +233,11 @@ if __name__ == '__main__':
             '--plain-csv',
             action = 'store_true',
             help = 'Makes standard CSV, useful if not using Excel',
+            )
+    parser.add_argument(
+            '--dump-columns',
+            action = 'store_true',
+            help = 'Dumps columns row in std.error before exit',
             )
 
     args = parser.parse_args()
