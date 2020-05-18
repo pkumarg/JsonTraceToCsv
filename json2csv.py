@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import json 
 import collections
 import copy 
@@ -51,6 +50,9 @@ def printCsvHeader(outputFile):
         print(separator.join(columnList), file=sys.stderr)
 
 def handleListType(inputList, outputDict):
+    global columnIdx
+    localColumnIdx = columnIdx
+
     for item in inputList:
         newDict = outputDict
         if (len(inputList) > 1 and bool(outputDict)):
@@ -59,10 +61,13 @@ def handleListType(inputList, outputDict):
         if type(item) is dict:
             handleDictType(item, newDict)
             # Let's print after handling list element
-            printOutput(newDict.values())
+            #print(str(len(outputColumns)) + " " + str(columnIdx))
+            if (columnIdx == len(outputColumns)):
+                printOutput(newDict.values())
         else:
             # Not expected a list, str, number type item
             handleError(item, "Didn't expect list,int,str type in handleListType()", True)
+        columnIdx = localColumnIdx
 
 def addToDict(key, value, outputDict):
     global addColumn
