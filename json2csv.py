@@ -1,7 +1,7 @@
-import json 
+import json
 import collections
-import copy 
-import sys 
+import copy
+import sys
 import argparse
 
 lineCounter = 0
@@ -17,17 +17,20 @@ dumpColumn = False
 outputDict = collections.OrderedDict()
 outputColumns = []
 
+
 def handleError(currentItem, error, exit):
     print("***Error*** Line=" + str(lineCounter) +
-            "\nDesc=" + error + "\nCurrentItem=" + str(currentItem),
-            file=sys.stderr)
+          "\nDesc=" + error + "\nCurrentItem=" + str(currentItem),
+          file=sys.stderr)
     if exit:
         exit()
+
 
 def printOutput(csvRow):
     global outputFile_fp
     global separator
     print(separator.join(csvRow), file=outputFile_fp)
+
 
 def printCsvHeader(outputFile):
     global outputColumns
@@ -49,6 +52,7 @@ def printCsvHeader(outputFile):
     elif dumpColumn:
         print(separator.join(columnList), file=sys.stderr)
 
+
 def handleListType(inputList, outputDict):
     global columnIdx
     localColumnIdx = columnIdx
@@ -61,7 +65,7 @@ def handleListType(inputList, outputDict):
         if type(item) is dict:
             handleDictType(item, newDict)
             # Let's print after handling list element
-            #print(str(len(outputColumns)) + " " + str(columnIdx))
+            # print(str(len(outputColumns)) + " " + str(columnIdx))
             if (columnIdx == len(outputColumns)):
                 printOutput(newDict.values())
         else:
@@ -69,14 +73,15 @@ def handleListType(inputList, outputDict):
             handleError(item, "Didn't expect list,int,str type in handleListType()", True)
         columnIdx = localColumnIdx
 
+
 def addToDict(key, value, outputDict):
     global addColumn
     global columnIdx
 
     # Add this column (Display all column case)
-    #print("addToDict(): ColIdx=" + str(columnIdx) + " Len=" + str(len(outputColumns)))
+    # print("addToDict(): ColIdx=" + str(columnIdx) + " Len=" + str(len(outputColumns)))
     if addColumn:
-        outputColumns.append({key:0})
+        outputColumns.append({key: 0})
     # Didn't match
     elif not (list(outputColumns[columnIdx].keys())[0] == key):
         return
@@ -99,7 +104,7 @@ def handleDictType(inputDict, outputDict):
     global addColumn
     global outputColumns
 
-    #print("handleDictType(): ColIdx=" + str(columnIdx) + " Len=" + str(len(outputColumns)))
+    # print("handleDictType(): ColIdx=" + str(columnIdx) + " Len=" + str(len(outputColumns)))
     for key in inputDict:
         if not addColumn and columnIdx >= len(outputColumns):
             return
@@ -117,12 +122,14 @@ def handleDictType(inputDict, outputDict):
         else:
             addToDict(key, str(inputDict[key]), outputDict)
 
+
 def toCsv(inputJson):
     global lastItemIsList
 
     handleDictType(inputJson, outputDict)
     if not lastItemIsList:
         printOutput(outputDict.values())
+
 
 def startParsing(args):
     global lineCounter
@@ -149,7 +156,7 @@ def startParsing(args):
         else:
             break
 
-    #Let's close output file so that it gets flushed, and wish that
+    # Let's close output file so that it gets flushed, and wish that
     # we have something useful in this :P
     if args.outputFile:
         outputFile_fp.close()
@@ -158,8 +165,9 @@ def startParsing(args):
     if args.dump_columns:
         printCsvHeader(None)
 
-    #And be a gentleman, not sure if python does it automatically
+    # And be a gentleman, not sure if python does it automatically
     jsonDataFile_fp.close()
+
 
 def updateCsvColumns(args):
     global outputColumns
@@ -175,11 +183,12 @@ def updateCsvColumns(args):
         colDepth = col.split(':')
         if len(colDepth) == 2:
             try:
-                outputColumns.append({colDepth[0]:int(colDepth[1])})
+                outputColumns.append({colDepth[0]: int(colDepth[1])})
             except ValueError:
-                print("Depth in column=" + col +" is not a valid number")
+                print("Depth in column=" + col + " is not a valid number")
         else:
-            outputColumns.append({colDepth[0]:0})
+            outputColumns.append({colDepth[0]: 0})
+
 
 def updateGlobals(args):
     global separator
@@ -204,46 +213,47 @@ def updateGlobals(args):
     if args.dump_columns:
         dumpColumn = True
 
+
 # Summon the magic
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-            description="JSON Object Parser",
-            epilog="",
-            formatter_class=argparse.RawDescriptionHelpFormatter)
+        description="JSON Object Parser",
+        epilog="",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
-            'inputJsonFile',
-            metavar='<inputFile.json>',
-            help=''
-            )
+        'inputJsonFile',
+        metavar='<inputFile.json>',
+        help=''
+    )
     parser.add_argument(
-            '-o',
-            '--outputFile',
-            metavar = '<outputFile.csv>',
-            help = ''
-            )
+        '-o',
+        '--outputFile',
+        metavar='<outputFile.csv>',
+        help=''
+    )
     parser.add_argument(
-            '-c',
-            '--csvColumns',
-            metavar = '<"col1,col2,col3 ...">',
-            help = 'Column name should exactly match, in JSON objects. \
+        '-c',
+        '--csvColumns',
+        metavar='<"col1,col2,col3 ...">',
+        help='Column name should exactly match, in JSON objects. \
                     Columns printed in output CSV file only make sense \
                     if input JSON file have all lines of same JSON object type'
-            )
+    )
     parser.add_argument(
-            '--separator',
-            metavar = '<Custom CSV separator, default is comma>',
-            help = ''
-            )
+        '--separator',
+        metavar='<Custom CSV separator, default is comma>',
+        help=''
+    )
     parser.add_argument(
-            '--plain-csv',
-            action = 'store_true',
-            help = 'Makes standard CSV, useful if not using Excel',
-            )
+        '--plain-csv',
+        action='store_true',
+        help='Makes standard CSV, useful if not using Excel',
+    )
     parser.add_argument(
-            '--dump-columns',
-            action = 'store_true',
-            help = 'Dumps columns row in std.error before exit',
-            )
+        '--dump-columns',
+        action='store_true',
+        help='Dumps columns row in std.error before exit',
+    )
 
     args = parser.parse_args()
 
@@ -253,4 +263,3 @@ if __name__ == '__main__':
         parser.print_help()
     else:
         startParsing(args)
-
